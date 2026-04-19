@@ -1,0 +1,82 @@
+name: ATS Quality Gates (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      project-path:
+        description: Path to the project to validate (relative to repo root)
+        type: string
+        default: '.'
+      skip:
+        description: Comma-separated gate names to skip (e.g. "e2e,performance")
+        type: string
+        default: ''
+      node-version:
+        description: Node.js version to use
+        type: string
+        default: '20'
+      ats-version:
+        description: ATS npm package version to install
+        type: string
+        default: 'latest'
+      fail-on-warn:
+        description: Exit non-zero on CONDITIONAL_PASS (warnings)
+        type: boolean
+        default: false
+    outputs:
+      verdict:
+        description: Run verdict — PASS, CONDITIONAL_PASS, or FAIL
+        value: ${{ jobs.ats.outputs.verdict }}
+
+jobs:
+  ats:
+    runs-on: ubuntu-latest
+    outputs:
+      verdict: ${{ steps.run-ats.outputs.verdict }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: pnpm
+
+      - name: Install ATS
+        run: npm install -g automated-testing-suite@${{ inputs.ats-version }}
+
+      - name: Run quality gates
+        id: run-ats
+        shell: bash
+        run: |
+          SKIP_ARG=""
+          if [ -n "${{ inputs.skip }}" ]; then
+            SKIP_ARG="--skip ${{ inputs.skip }}"
+          fi
+
+          set +e
+          ats run "${{ inputs.project-path }}" $SKIP_ARG --report-dir ./ats-reports --no-fail-fast
+          ATS_EXIT=$?
+          set -e
+
+          VERDICT=$(cat ats-reports/*.json 2>/dev/null | jq -r '.verdict' | head -1)
+          echo "verdict=${VERDICT}" >> "$GITHUB_OUTPUT"
+
+          if [ "$VERDICT" = "FAIL" ]; then
+            exit 1
+          fi
+          if [ "${{ inputs.fail-on-warn }}" = "true" ] && [ "$VERDICT" = "CONDITIONAL_PASS" ]; then
+            exit 1
+          fi
+
+      - name: Upload ATS report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ats-report
+          path: ats-reports/
+          if-no-files-found: ignore

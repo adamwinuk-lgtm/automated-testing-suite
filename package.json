@@ -1,0 +1,66 @@
+{
+  "name": "automated-testing-suite",
+  "version": "1.1.0",
+  "description": "Multi-language quality gate CLI — lint, typecheck, tests, build, audit, security, e2e, and performance gates for Node.js, Python, React, and Docker projects",
+  "type": "module",
+  "bin": {
+    "ats": "dist/cli.js"
+  },
+  "keywords": [
+    "cli",
+    "testing",
+    "quality",
+    "lint",
+    "typecheck",
+    "audit",
+    "security",
+    "ci",
+    "automation",
+    "nodejs",
+    "python",
+    "react",
+    "docker"
+  ],
+  "author": "Adam White",
+  "license": "MIT",
+  "homepage": "https://github.com/adamwinuk-lgtm/automated-testing-suite#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/adamwinuk-lgtm/automated-testing-suite.git"
+  },
+  "bugs": {
+    "url": "https://github.com/adamwinuk-lgtm/automated-testing-suite/issues"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "dev": "tsx watch src/cli.ts",
+    "build": "tsup",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src tests",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm build"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
+    "execa": "^9.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0",
+    "tsup": "^8.2.4",
+    "tsx": "^4.17.0",
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

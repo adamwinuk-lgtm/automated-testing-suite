@@ -1,0 +1,13 @@
+node_modules/
+dist/
+reports/
+*.log
+.env
+.env.local
+.env.*.local
+coverage/
+.vitest-cache/
+.claude/
+generate_doc.py
+*.docx
+~$*
