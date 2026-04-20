@@ -20,6 +20,16 @@ pnpm link --global
 ats run <project-path>
 ```
 
+### Watch mode
+
+Re-runs gates automatically when files change:
+
+```bash
+ats watch <project-path>
+```
+
+Uses debounced file watching — gates re-run 500ms after the last change.
+
 ### Options
 
 | Flag | Description |
@@ -136,7 +146,7 @@ git clone https://github.com/adamwinuk-lgtm/automated-testing-suite
 cd automated-testing-suite
 pnpm install
 pnpm dev          # watch mode
-pnpm test         # vitest (91 tests)
+pnpm test         # vitest (143 tests)
 pnpm build        # compile to dist/
 pnpm lint
 pnpm typecheck
