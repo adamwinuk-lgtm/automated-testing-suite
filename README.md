@@ -5,7 +5,7 @@ A multi-language quality gate CLI that replaces manual build-validator and app-v
 ## Install
 
 ```bash
-npm install -g automated-testing-suite
+npm install -g @falxdev/automated-testing-suite
 ```
 
 Or for local dev (from this repo):
@@ -169,7 +169,7 @@ jobs:
 
 ```yaml
 - name: Install ats
-  run: npm install -g automated-testing-suite
+  run: npm install -g @falxdev/automated-testing-suite
 
 - name: Run quality gates
   run: ats run . --skip e2e,performance
