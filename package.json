@@ -1,6 +1,6 @@
 {
   "name": "automated-testing-suite",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Multi-language quality gate CLI — lint, typecheck, tests, build, audit, security, e2e, and performance gates for Node.js, Python, React, and Docker projects",
   "type": "module",
   "bin": {
