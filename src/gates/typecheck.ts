@@ -9,6 +9,12 @@ function tscCmd(ctx: ProjectContext): [string, string[]] {
   return ['npx', ['tsc', '--noEmit']];
 }
 
+function typecheckScriptCmd(ctx: ProjectContext): [string, string[]] {
+  if (ctx.packageManager === 'pnpm') return ['pnpm', ['run', 'typecheck']];
+  if (ctx.packageManager === 'yarn') return ['yarn', ['typecheck']];
+  return ['npm', ['run', 'typecheck']];
+}
+
 function hasMypyConfig(rootPath: string): boolean {
   if (existsSync(join(rootPath, 'mypy.ini')) || existsSync(join(rootPath, '.mypy.ini'))) return true;
   const pyproject = join(rootPath, 'pyproject.toml');
@@ -69,7 +75,10 @@ export async function runTypecheck(ctx: ProjectContext): Promise<GateResult> {
   if (ctx.types.includes('python')) return runMypy(ctx);
   if (!isNode) return { gate: 'typecheck', status: 'SKIP', duration: 0 };
 
-  if (!existsSync(join(ctx.rootPath, 'tsconfig.json'))) {
+  const hasScript = Boolean(ctx.scripts.typecheck);
+  const hasTsconfig = existsSync(join(ctx.rootPath, 'tsconfig.json'));
+
+  if (!hasScript && !hasTsconfig) {
     return {
       gate: 'typecheck',
       status: 'SKIP',
@@ -79,7 +88,7 @@ export async function runTypecheck(ctx: ProjectContext): Promise<GateResult> {
   }
 
   const start = Date.now();
-  const [cmd, args] = tscCmd(ctx);
+  const [cmd, args] = hasScript ? typecheckScriptCmd(ctx) : tscCmd(ctx);
   try {
     const result = await execa(cmd, args, { cwd: ctx.rootPath, reject: false });
     const duration = Date.now() - start;

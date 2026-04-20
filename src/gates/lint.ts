@@ -25,6 +25,12 @@ function eslintCmd(ctx: ProjectContext): [string, string[]] {
   return ['npx', ['eslint', '.']];
 }
 
+function lintScriptCmd(ctx: ProjectContext): [string, string[]] {
+  if (ctx.packageManager === 'pnpm') return ['pnpm', ['run', 'lint']];
+  if (ctx.packageManager === 'yarn') return ['yarn', ['lint']];
+  return ['npm', ['run', 'lint']];
+}
+
 function hasRuffConfig(rootPath: string): boolean {
   if (existsSync(join(rootPath, 'ruff.toml')) || existsSync(join(rootPath, '.ruff.toml'))) return true;
   const pyproject = join(rootPath, 'pyproject.toml');
@@ -37,7 +43,10 @@ function hasRuffConfig(rootPath: string): boolean {
 }
 
 async function runEslint(ctx: ProjectContext): Promise<GateResult> {
-  if (!hasEslintConfig(ctx.rootPath)) {
+  const hasScript = Boolean(ctx.scripts.lint);
+  const hasConfig = hasEslintConfig(ctx.rootPath);
+
+  if (!hasScript && !hasConfig) {
     return {
       gate: 'lint',
       status: 'SKIP',
@@ -47,7 +56,7 @@ async function runEslint(ctx: ProjectContext): Promise<GateResult> {
   }
 
   const start = Date.now();
-  const [cmd, args] = eslintCmd(ctx);
+  const [cmd, args] = hasScript ? lintScriptCmd(ctx) : eslintCmd(ctx);
   try {
     const result = await execa(cmd, args, { cwd: ctx.rootPath, reject: false });
     const duration = Date.now() - start;

@@ -21,7 +21,7 @@ function makeTemp(): string {
 }
 
 function dockerCtx(rootPath: string): ProjectContext {
-  return { rootPath, types: ['docker'], packageManager: null };
+  return { rootPath, types: ['docker'], packageManager: null, scripts: {} };
 }
 
 afterEach(() => {
@@ -32,7 +32,7 @@ afterEach(() => {
 describe('runBuild (docker) — SKIP', () => {
   it('SKIPs nodejs project', async () => {
     const dir = makeTemp();
-    const result = await runBuild({ rootPath: dir, types: ['nodejs'], packageManager: 'npm' });
+    const result = await runBuild({ rootPath: dir, types: ['nodejs'], packageManager: 'npm', scripts: {} });
     // nodejs project with no build script should SKIP
     expect(result.status).toBe('SKIP');
     expect(mockExeca).not.toHaveBeenCalled();

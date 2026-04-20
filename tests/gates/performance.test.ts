@@ -21,7 +21,7 @@ function makeTemp(): string {
 }
 
 function webCtx(rootPath: string): ProjectContext {
-  return { rootPath, types: ['nodejs'], packageManager: 'npm' };
+  return { rootPath, types: ['nodejs'], packageManager: 'npm', scripts: {} };
 }
 
 afterEach(() => {
@@ -32,7 +32,7 @@ afterEach(() => {
 describe('runPerformance — SKIP', () => {
   it('SKIPs python project (not web)', async () => {
     const dir = makeTemp();
-    const result = await runPerformance({ rootPath: dir, types: ['python'], packageManager: null });
+    const result = await runPerformance({ rootPath: dir, types: ['python'], packageManager: null, scripts: {} });
     expect(result.status).toBe('SKIP');
     expect(mockExeca).not.toHaveBeenCalled();
   });

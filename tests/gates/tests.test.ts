@@ -21,7 +21,7 @@ function makeTemp(): string {
 }
 
 function ctx(rootPath: string): ProjectContext {
-  return { rootPath, types: ['nodejs'], packageManager: 'pnpm' };
+  return { rootPath, types: ['nodejs'], packageManager: 'pnpm', scripts: {} };
 }
 
 afterEach(() => {
@@ -32,7 +32,7 @@ afterEach(() => {
 describe('runTests — SKIP', () => {
   it('SKIPs for non-Node projects', async () => {
     const dir = makeTemp();
-    const result = await runTests({ rootPath: dir, types: ['docker'], packageManager: null });
+    const result = await runTests({ rootPath: dir, types: ['docker'], packageManager: null, scripts: {} });
     expect(result.status).toBe('SKIP');
     expect(mockExeca).not.toHaveBeenCalled();
   });

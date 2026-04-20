@@ -21,11 +21,11 @@ function makeTemp(): string {
 }
 
 function pyCtx(rootPath: string): ProjectContext {
-  return { rootPath, types: ['python'], packageManager: null };
+  return { rootPath, types: ['python'], packageManager: null, scripts: {} };
 }
 
 function nodeCtx(rootPath: string): ProjectContext {
-  return { rootPath, types: ['nodejs'], packageManager: 'npm' };
+  return { rootPath, types: ['nodejs'], packageManager: 'npm', scripts: {} };
 }
 
 afterEach(() => {
@@ -36,7 +36,7 @@ afterEach(() => {
 describe('runSecurity — SKIP', () => {
   it('SKIPs docker-only project', async () => {
     const dir = makeTemp();
-    const result = await runSecurity({ rootPath: dir, types: ['docker'], packageManager: null });
+    const result = await runSecurity({ rootPath: dir, types: ['docker'], packageManager: null, scripts: {} });
     expect(result.status).toBe('SKIP');
     expect(mockExeca).not.toHaveBeenCalled();
   });

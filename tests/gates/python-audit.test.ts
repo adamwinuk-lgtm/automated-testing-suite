@@ -21,7 +21,7 @@ function makeTemp(): string {
 }
 
 function pyCtx(rootPath: string): ProjectContext {
-  return { rootPath, types: ['python'], packageManager: null };
+  return { rootPath, types: ['python'], packageManager: null, scripts: {} };
 }
 
 afterEach(() => {
@@ -32,7 +32,7 @@ afterEach(() => {
 describe('runAudit (python) — SKIP', () => {
   it('SKIPs docker-only project', async () => {
     const dir = makeTemp();
-    const result = await runAudit({ rootPath: dir, types: ['docker'], packageManager: null });
+    const result = await runAudit({ rootPath: dir, types: ['docker'], packageManager: null, scripts: {} });
     expect(result.status).toBe('SKIP');
     expect(mockExeca).not.toHaveBeenCalled();
   });
