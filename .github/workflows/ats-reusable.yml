@@ -47,19 +47,25 @@ jobs:
           cache: pnpm
 
       - name: Install ATS
-        run: npm install -g automated-testing-suite@${{ inputs.ats-version }}
+        env:
+          ATS_VERSION: ${{ inputs.ats-version }}
+        run: npm install -g "automated-testing-suite@${ATS_VERSION}"
 
       - name: Run quality gates
         id: run-ats
         shell: bash
+        env:
+          ATS_PROJECT_PATH: ${{ inputs.project-path }}
+          ATS_SKIP: ${{ inputs.skip }}
+          ATS_FAIL_ON_WARN: ${{ inputs.fail-on-warn }}
         run: |
           SKIP_ARG=""
-          if [ -n "${{ inputs.skip }}" ]; then
-            SKIP_ARG="--skip ${{ inputs.skip }}"
+          if [ -n "$ATS_SKIP" ]; then
+            SKIP_ARG="--skip $ATS_SKIP"
           fi
 
           set +e
-          ats run "${{ inputs.project-path }}" $SKIP_ARG --report-dir ./ats-reports --no-fail-fast
+          ats run "$ATS_PROJECT_PATH" $SKIP_ARG --report-dir ./ats-reports --no-fail-fast
           ATS_EXIT=$?
           set -e
 
@@ -69,7 +75,7 @@ jobs:
           if [ "$VERDICT" = "FAIL" ]; then
             exit 1
           fi
-          if [ "${{ inputs.fail-on-warn }}" = "true" ] && [ "$VERDICT" = "CONDITIONAL_PASS" ]; then
+          if [ "$ATS_FAIL_ON_WARN" = "true" ] && [ "$VERDICT" = "CONDITIONAL_PASS" ]; then
             exit 1
           fi
 
