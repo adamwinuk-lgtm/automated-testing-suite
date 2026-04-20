@@ -39,7 +39,7 @@ program
       only: options.only ?? null,
       failFast: options.failFast !== false,
       reportDir: resolve(options.reportDir),
-      includePerf: options.includePef ?? false,
+      includePerf: options.includePerf ?? false,
     };
 
     const result = await run(config);
