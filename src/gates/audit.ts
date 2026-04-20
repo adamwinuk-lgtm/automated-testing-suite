@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { execa } from 'execa';
 import type { GateResult, ProjectContext } from '../types.js';
@@ -98,6 +98,78 @@ function auditCmd(ctx: ProjectContext): [string, string[]] {
   return ['npm', ['audit', '--json']];
 }
 
+function expandGlobPattern(rootPath: string, pattern: string): string[] {
+  // Handle simple single-level globs like "packages/*" or "apps/*"
+  // Strip leading ./ if present
+  const normalized = pattern.replace(/^\.\//, '');
+  const starIdx = normalized.indexOf('*');
+  if (starIdx === -1) {
+    const full = join(rootPath, normalized);
+    return existsSync(join(full, 'package.json')) ? [full] : [];
+  }
+  const base = normalized.slice(0, starIdx).replace(/\/$/, '');
+  const baseDir = join(rootPath, base);
+  if (!existsSync(baseDir)) return [];
+  try {
+    return readdirSync(baseDir)
+      .map((entry) => join(baseDir, entry))
+      .filter((p) => {
+        try { return statSync(p).isDirectory() && existsSync(join(p, 'package.json')); }
+        catch { return false; }
+      });
+  } catch {
+    return [];
+  }
+}
+
+function resolveWorkspacePackages(rootPath: string): string[] {
+  const results: string[] = [];
+
+  // pnpm-workspace.yaml
+  const pnpmWs = join(rootPath, 'pnpm-workspace.yaml');
+  if (existsSync(pnpmWs)) {
+    try {
+      const content = readFileSync(pnpmWs, 'utf8');
+      // Extract quoted/unquoted list items under the "packages:" key
+      const matches = content.match(/^\s+-\s+['"]?([^'"#\n]+?)['"]?\s*$/gm) ?? [];
+      for (const line of matches) {
+        const pattern = line.replace(/^\s+-\s+['"]?/, '').replace(/['"]?\s*$/, '').trim();
+        if (pattern) results.push(...expandGlobPattern(rootPath, pattern));
+      }
+    } catch {
+      // unreadable — skip
+    }
+  }
+
+  // package.json workspaces field (npm/yarn style)
+  const pkgJson = join(rootPath, 'package.json');
+  if (existsSync(pkgJson)) {
+    try {
+      const pkg = JSON.parse(readFileSync(pkgJson, 'utf8')) as { workspaces?: string[] | { packages?: string[] } };
+      const patterns = Array.isArray(pkg.workspaces)
+        ? pkg.workspaces
+        : pkg.workspaces?.packages ?? [];
+      for (const pattern of patterns) {
+        results.push(...expandGlobPattern(rootPath, pattern));
+      }
+    } catch {
+      // unparseable — skip
+    }
+  }
+
+  // Deduplicate
+  return [...new Set(results)];
+}
+
+async function auditOnePackage(
+  cwd: string,
+  cmd: string,
+  args: string[],
+): Promise<{ vulns: AuditVulns | null; raw: string }> {
+  const result = await execa(cmd, args, { cwd, reject: false });
+  return { vulns: parseVulns(result.stdout), raw: result.stdout || result.stderr };
+}
+
 export async function runAudit(ctx: ProjectContext): Promise<GateResult> {
   if (ctx.types.includes('python')) return runPipAudit(ctx);
   const isNode = ctx.types.includes('nodejs') || ctx.types.includes('react');
@@ -109,46 +181,69 @@ export async function runAudit(ctx: ProjectContext): Promise<GateResult> {
 
   const start = Date.now();
   const [cmd, args] = auditCmd(ctx);
+
+  // Collect all paths to audit: root + any workspace packages
+  const workspaces = resolveWorkspacePackages(ctx.rootPath);
+  const paths = [ctx.rootPath, ...workspaces.filter((p) => p !== ctx.rootPath)];
+
   try {
-    const result = await execa(cmd, args, { cwd: ctx.rootPath, reject: false });
+    const results = await Promise.all(paths.map((p) => auditOnePackage(p, cmd, args)));
     const duration = Date.now() - start;
 
-    const vulns = parseVulns(result.stdout);
-
-    if (!vulns) {
-      // Command ran but output isn't parseable JSON — treat as WARN
+    const unparseable = results.filter((r) => r.vulns === null);
+    if (unparseable.length === results.length) {
       return {
         gate: 'audit',
         status: 'WARN',
         duration,
-        output: result.stdout || result.stderr,
+        output: results[0].raw,
         fix: `Run: ${cmd} audit for details.`,
       };
     }
 
-    if (vulns.critical > 0 || vulns.high > 0) {
+    const totals = results.reduce(
+      (acc, r) => {
+        if (!r.vulns) return acc;
+        return {
+          critical: acc.critical + r.vulns.critical,
+          high: acc.high + r.vulns.high,
+          moderate: acc.moderate + r.vulns.moderate,
+          total: acc.total + r.vulns.total,
+        };
+      },
+      { critical: 0, high: 0, moderate: 0, total: 0 },
+    );
+
+    const pkgLabel = paths.length > 1 ? ` across ${paths.length} packages` : '';
+
+    if (totals.critical > 0 || totals.high > 0) {
       return {
         gate: 'audit',
         status: 'FAIL',
         duration,
         errors: [
-          `${vulns.critical} critical, ${vulns.high} high, ${vulns.moderate} moderate vulnerabilities`,
+          `${totals.critical} critical, ${totals.high} high, ${totals.moderate} moderate vulnerabilities${pkgLabel}`,
         ],
-        fix: `Run: ${cmd === 'npm' ? 'npm' : cmd} audit fix`,
+        fix: `Run: ${cmd} audit fix`,
       };
     }
 
-    if (vulns.moderate > 0) {
+    if (totals.moderate > 0) {
       return {
         gate: 'audit',
         status: 'WARN',
         duration,
-        output: `${vulns.moderate} moderate vulnerabilities found`,
-        fix: `Run: ${cmd === 'npm' ? 'npm' : cmd} audit fix`,
+        output: `${totals.moderate} moderate vulnerabilities found${pkgLabel}`,
+        fix: `Run: ${cmd} audit fix`,
       };
     }
 
-    return { gate: 'audit', status: 'PASS', duration, output: `${vulns.total} vulnerabilities (none high/critical)` };
+    return {
+      gate: 'audit',
+      status: 'PASS',
+      duration,
+      output: `${totals.total} vulnerabilities (none high/critical)${pkgLabel}`,
+    };
   } catch (err) {
     return {
       gate: 'audit',
