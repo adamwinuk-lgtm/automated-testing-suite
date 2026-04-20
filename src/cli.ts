@@ -34,6 +34,8 @@ function buildConfig(projectPath: string, options: Record<string, unknown>, repo
     failFast: options.failFast !== false,
     reportDir: resolve(options.reportDir as string ?? reportDir),
     includePerf: (options.includePerf as boolean) ?? false,
+    parallel: (options.parallel as boolean) ?? false,
+    testStore: options.testStore ? resolve(options.testStore as string) : undefined,
   };
 }
 
@@ -45,6 +47,8 @@ program
   .option('--no-fail-fast', 'Continue running gates even after a failure')
   .option('--report-dir <dir>', 'Directory to write JSON/HTML reports', './reports')
   .option('--include-perf', 'Include performance gate (Lighthouse/k6)', false)
+  .option('--parallel', 'Run all gates concurrently (disables fail-fast)', false)
+  .option('--test-store <dir>', 'Append full RunResult JSON to this directory for trend tracking')
   .action(async (projectPath: string, options) => {
     const config = buildConfig(projectPath, options);
     const result = await run(config);
@@ -59,6 +63,8 @@ program
   .option('--no-fail-fast', 'Continue running gates even after a failure')
   .option('--report-dir <dir>', 'Directory to write JSON/HTML reports', './reports')
   .option('--include-perf', 'Include performance gate (Lighthouse/k6)', false)
+  .option('--parallel', 'Run all gates concurrently (disables fail-fast)', false)
+  .option('--test-store <dir>', 'Append full RunResult JSON to this directory for trend tracking')
   .option('--debounce <ms>', 'Debounce delay in milliseconds', '500')
   .action(async (projectPath: string, options) => {
     const config = buildConfig(projectPath, options);

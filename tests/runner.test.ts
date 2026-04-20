@@ -12,6 +12,7 @@ vi.mock('../src/detectors/index.js', () => ({
 vi.mock('../src/reporters/console.js', () => ({ printConsoleReport: vi.fn() }));
 vi.mock('../src/reporters/json.js', () => ({ writeJsonReport: vi.fn().mockResolvedValue(undefined) }));
 vi.mock('../src/reporters/html.js', () => ({ writeHtmlReport: vi.fn().mockResolvedValue(undefined) }));
+vi.mock('../src/store.js', () => ({ writeTestStore: vi.fn().mockResolvedValue('/tmp/fake/result.json') }));
 
 const gateNames = ['lint', 'typecheck', 'tests', 'build', 'audit', 'ci-config', 'e2e', 'ui-behavior', 'a11y', 'security', 'performance'];
 
@@ -39,6 +40,7 @@ const { runPerformance } = await import('../src/gates/performance.js');
 const { runUiBehavior } = await import('../src/gates/ui-behavior.js');
 const { runA11y } = await import('../src/gates/a11y.js');
 
+const { writeTestStore } = await import('../src/store.js');
 const { run } = await import('../src/runner.js');
 
 const mockGates = {
@@ -94,6 +96,7 @@ function baseConfig(overrides: Partial<RunConfig> = {}): RunConfig {
     failFast: true,
     reportDir,
     includePerf: false,
+    parallel: false,
     ...overrides,
   };
 }
@@ -260,5 +263,68 @@ describe('runner — run result shape', () => {
     const result = await run(config);
     expect(result.config).toBe(config);
     expect(result.context).toBeDefined();
+  });
+});
+
+describe('runner — --parallel', () => {
+  it('runs all active gates and returns results', async () => {
+    const result = await run(baseConfig({ parallel: true }));
+    const ran = result.gates.map(g => g.gate);
+    expect(ran).toContain('lint');
+    expect(ran).toContain('typecheck');
+    expect(ran).toContain('tests');
+  });
+
+  it('returns all gates in DEFAULT_GATE_ORDER (not task-completion order)', async () => {
+    const result = await run(baseConfig({ parallel: true }));
+    const ran = result.gates.map(g => g.gate);
+    const expected = ['lint', 'typecheck', 'tests', 'build', 'audit', 'ci-config', 'e2e', 'ui-behavior', 'a11y', 'security'];
+    expect(ran).toEqual(expected);
+  });
+
+  it('returns PASS verdict when all gates pass', async () => {
+    const result = await run(baseConfig({ parallel: true }));
+    expect(result.verdict).toBe('PASS');
+  });
+
+  it('returns FAIL verdict when any gate fails', async () => {
+    mockGates.tests.mockResolvedValue(failResult('tests'));
+    const result = await run(baseConfig({ parallel: true }));
+    expect(result.verdict).toBe('FAIL');
+  });
+
+  it('runs every active gate even when one fails (no fail-fast in parallel mode)', async () => {
+    mockGates.lint.mockResolvedValue(failResult('lint'));
+    const result = await run(baseConfig({ parallel: true }));
+    // All gates ran — not just lint
+    expect(result.gates.length).toBeGreaterThan(1);
+    expect(mockGates.typecheck).toHaveBeenCalled();
+  });
+
+  it('excludes performance gate unless includePerf is set', async () => {
+    const result = await run(baseConfig({ parallel: true, includePerf: false }));
+    expect(result.gates.map(g => g.gate)).not.toContain('performance');
+  });
+});
+
+describe('runner — --test-store', () => {
+  it('does not call writeTestStore when testStore is not set', async () => {
+    await run(baseConfig());
+    expect(vi.mocked(writeTestStore)).not.toHaveBeenCalled();
+  });
+
+  it('calls writeTestStore with result and store path when testStore is set', async () => {
+    const storeDir = join(tmpdir(), `ats-store-${randomUUID()}`);
+    const result = await run(baseConfig({ testStore: storeDir }));
+    expect(vi.mocked(writeTestStore)).toHaveBeenCalledWith(result, storeDir);
+  });
+
+  it('passes the full RunResult to writeTestStore', async () => {
+    const storeDir = join(tmpdir(), `ats-store-${randomUUID()}`);
+    await run(baseConfig({ testStore: storeDir }));
+    const [calledResult] = vi.mocked(writeTestStore).mock.calls[0];
+    expect(calledResult.verdict).toBe('PASS');
+    expect(calledResult.gates.length).toBeGreaterThan(0);
+    expect(calledResult.timestamp).toBeDefined();
   });
 });

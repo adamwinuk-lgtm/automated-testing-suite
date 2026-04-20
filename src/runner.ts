@@ -14,6 +14,7 @@ import { runA11y } from './gates/a11y.js';
 import { printConsoleReport } from './reporters/console.js';
 import { writeJsonReport } from './reporters/json.js';
 import { writeHtmlReport } from './reporters/html.js';
+import { writeTestStore } from './store.js';
 import { mkdir } from 'node:fs/promises';
 
 type GateFn = (ctx: ReturnType<typeof detectProject>) => Promise<GateResult>;
@@ -53,14 +54,19 @@ export async function run(config: RunConfig): Promise<RunResult> {
     return true;
   });
 
-  const results: GateResult[] = [];
+  let results: GateResult[];
 
-  for (const gateName of activeGates) {
-    const gateFn = GATE_REGISTRY[gateName];
-    const result = await gateFn(context);
-    results.push(result);
-
-    if (config.failFast && result.status === 'FAIL') break;
+  if (config.parallel) {
+    results = await Promise.all(activeGates.map(name => GATE_REGISTRY[name](context)));
+    // Restore defined order so reporters display gates consistently
+    results.sort((a, b) => DEFAULT_GATE_ORDER.indexOf(a.gate) - DEFAULT_GATE_ORDER.indexOf(b.gate));
+  } else {
+    results = [];
+    for (const gateName of activeGates) {
+      const result = await GATE_REGISTRY[gateName](context);
+      results.push(result);
+      if (config.failFast && result.status === 'FAIL') break;
+    }
   }
 
   const verdict = resolveVerdict(results);
@@ -77,6 +83,10 @@ export async function run(config: RunConfig): Promise<RunResult> {
   printConsoleReport(runResult);
   await writeJsonReport(runResult);
   await writeHtmlReport(runResult);
+
+  if (config.testStore) {
+    await writeTestStore(runResult, config.testStore);
+  }
 
   return runResult;
 }

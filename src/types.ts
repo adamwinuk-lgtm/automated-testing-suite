@@ -38,6 +38,8 @@ export interface RunConfig {
   failFast: boolean;
   reportDir: string;
   includePerf: boolean;
+  parallel: boolean;
+  testStore?: string;
 }
 
 export type Verdict = 'PASS' | 'CONDITIONAL_PASS' | 'FAIL';
