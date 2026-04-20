@@ -13,7 +13,7 @@ vi.mock('../src/reporters/console.js', () => ({ printConsoleReport: vi.fn() }));
 vi.mock('../src/reporters/json.js', () => ({ writeJsonReport: vi.fn().mockResolvedValue(undefined) }));
 vi.mock('../src/reporters/html.js', () => ({ writeHtmlReport: vi.fn().mockResolvedValue(undefined) }));
 
-const gateNames = ['lint', 'typecheck', 'tests', 'build', 'audit', 'ci-config', 'e2e', 'security', 'performance'];
+const gateNames = ['lint', 'typecheck', 'tests', 'build', 'audit', 'ci-config', 'e2e', 'ui-behavior', 'a11y', 'security', 'performance'];
 
 vi.mock('../src/gates/lint.js', () => ({ runLint: vi.fn() }));
 vi.mock('../src/gates/typecheck.js', () => ({ runTypecheck: vi.fn() }));
@@ -24,6 +24,8 @@ vi.mock('../src/gates/ci-config.js', () => ({ runCiConfig: vi.fn() }));
 vi.mock('../src/gates/e2e.js', () => ({ runE2e: vi.fn() }));
 vi.mock('../src/gates/security.js', () => ({ runSecurity: vi.fn() }));
 vi.mock('../src/gates/performance.js', () => ({ runPerformance: vi.fn() }));
+vi.mock('../src/gates/ui-behavior.js', () => ({ runUiBehavior: vi.fn() }));
+vi.mock('../src/gates/a11y.js', () => ({ runA11y: vi.fn() }));
 
 const { runLint } = await import('../src/gates/lint.js');
 const { runTypecheck } = await import('../src/gates/typecheck.js');
@@ -34,6 +36,8 @@ const { runCiConfig } = await import('../src/gates/ci-config.js');
 const { runE2e } = await import('../src/gates/e2e.js');
 const { runSecurity } = await import('../src/gates/security.js');
 const { runPerformance } = await import('../src/gates/performance.js');
+const { runUiBehavior } = await import('../src/gates/ui-behavior.js');
+const { runA11y } = await import('../src/gates/a11y.js');
 
 const { run } = await import('../src/runner.js');
 
@@ -47,6 +51,8 @@ const mockGates = {
   e2e: vi.mocked(runE2e),
   security: vi.mocked(runSecurity),
   performance: vi.mocked(runPerformance),
+  'ui-behavior': vi.mocked(runUiBehavior),
+  a11y: vi.mocked(runA11y),
 };
 
 function passResult(gate: string): GateResult {
@@ -96,7 +102,7 @@ describe('runner — gate ordering', () => {
   it('runs all default gates except performance', async () => {
     const result = await run(baseConfig());
     const ran = result.gates.map(g => g.gate);
-    expect(ran).toEqual(['lint', 'typecheck', 'tests', 'build', 'audit', 'ci-config', 'e2e', 'security']);
+    expect(ran).toEqual(['lint', 'typecheck', 'tests', 'build', 'audit', 'ci-config', 'e2e', 'ui-behavior', 'a11y', 'security']);
     expect(ran).not.toContain('performance');
   });
 
@@ -108,7 +114,7 @@ describe('runner — gate ordering', () => {
   it('maintains fixed gate order', async () => {
     const result = await run(baseConfig());
     const ran = result.gates.map(g => g.gate);
-    const expected = ['lint', 'typecheck', 'tests', 'build', 'audit', 'ci-config', 'e2e', 'security'];
+    const expected = ['lint', 'typecheck', 'tests', 'build', 'audit', 'ci-config', 'e2e', 'ui-behavior', 'a11y', 'security'];
     expect(ran).toEqual(expected);
   });
 });

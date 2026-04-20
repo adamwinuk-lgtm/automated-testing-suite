@@ -9,6 +9,8 @@ import { runCiConfig } from './gates/ci-config.js';
 import { runE2e } from './gates/e2e.js';
 import { runSecurity } from './gates/security.js';
 import { runPerformance } from './gates/performance.js';
+import { runUiBehavior } from './gates/ui-behavior.js';
+import { runA11y } from './gates/a11y.js';
 import { printConsoleReport } from './reporters/console.js';
 import { writeJsonReport } from './reporters/json.js';
 import { writeHtmlReport } from './reporters/html.js';
@@ -26,11 +28,13 @@ const GATE_REGISTRY: Record<GateName, GateFn> = {
   e2e: runE2e,
   security: runSecurity,
   performance: runPerformance,
+  'ui-behavior': runUiBehavior,
+  a11y: runA11y,
 };
 
 const DEFAULT_GATE_ORDER: GateName[] = [
   'lint', 'typecheck', 'tests', 'build', 'audit',
-  'ci-config', 'e2e', 'security', 'performance',
+  'ci-config', 'e2e', 'ui-behavior', 'a11y', 'security', 'performance',
 ];
 
 function resolveVerdict(gates: GateResult[]): Verdict {

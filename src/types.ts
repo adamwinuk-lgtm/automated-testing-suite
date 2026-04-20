@@ -9,7 +9,9 @@ export type GateName =
   | 'ci-config'
   | 'e2e'
   | 'security'
-  | 'performance';
+  | 'performance'
+  | 'ui-behavior'
+  | 'a11y';
 
 export interface GateResult {
   gate: GateName;

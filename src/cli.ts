@@ -5,13 +5,14 @@ import { fileURLToPath } from 'node:url';
 import type { GateName, RunConfig } from './types.js';
 import { run } from './runner.js';
 import { watch } from './watcher.js';
+import { initProject } from './init.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(resolve(__dirname, '../package.json'), 'utf-8')) as { version: string };
 
 const VALID_GATES: GateName[] = [
   'lint', 'typecheck', 'tests', 'build', 'audit',
-  'ci-config', 'e2e', 'security', 'performance',
+  'ci-config', 'e2e', 'security', 'performance', 'ui-behavior', 'a11y',
 ];
 
 function parseGateList(value: string): GateName[] {
@@ -63,6 +64,21 @@ program
     const config = buildConfig(projectPath, options);
     const debounceMs = parseInt(options.debounce as string, 10);
     await watch(config, debounceMs);
+  });
+
+program
+  .command('init [project-path]')
+  .description('Scaffold an .ats.yml config file in a project directory')
+  .option('--force', 'Overwrite existing .ats.yml', false)
+  .action((projectPath: string | undefined, options: { force: boolean }) => {
+    const target = projectPath ?? '.';
+    const result = initProject(target, options.force);
+    if (result.skipped) {
+      console.log(`ats: .ats.yml already exists at ${result.configPath} (use --force to overwrite)`);
+    } else {
+      console.log(`ats: created ${result.configPath}`);
+      console.log(result.content);
+    }
   });
 
 program.parseAsync(process.argv).catch((err: unknown) => {
