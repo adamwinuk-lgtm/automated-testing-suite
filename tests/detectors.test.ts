@@ -73,4 +73,27 @@ describe('detectProject', () => {
     expect(ctx.types).toHaveLength(0);
     expect(ctx.packageManager).toBeNull();
   });
+
+  it('populates scripts from package.json', () => {
+    const dir = makeTemp();
+    writeFileSync(
+      join(dir, 'package.json'),
+      JSON.stringify({ scripts: { lint: 'eslint .', typecheck: 'tsc --noEmit', test: 'vitest' } }),
+    );
+    const ctx = detectProject(dir);
+    expect(ctx.scripts).toEqual({ lint: 'eslint .', typecheck: 'tsc --noEmit', test: 'vitest' });
+  });
+
+  it('returns empty scripts when no package.json', () => {
+    const dir = makeTemp();
+    const ctx = detectProject(dir);
+    expect(ctx.scripts).toEqual({});
+  });
+
+  it('returns empty scripts when package.json has no scripts field', () => {
+    const dir = makeTemp();
+    writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'test' }));
+    const ctx = detectProject(dir);
+    expect(ctx.scripts).toEqual({});
+  });
 });

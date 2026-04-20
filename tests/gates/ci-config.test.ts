@@ -15,7 +15,7 @@ function makeTemp(): string {
 }
 
 function ctx(rootPath: string): ProjectContext {
-  return { rootPath, types: ['nodejs'], packageManager: 'pnpm' };
+  return { rootPath, types: ['nodejs'], packageManager: 'pnpm', scripts: {} };
 }
 
 const FULL_WORKFLOW = `

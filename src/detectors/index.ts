@@ -10,6 +10,17 @@ function detectPackageManager(root: string): ProjectContext['packageManager'] {
   return null;
 }
 
+function readScripts(root: string): Record<string, string> {
+  const pkgPath = join(root, 'package.json');
+  if (!existsSync(pkgPath)) return {};
+  try {
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
+    return pkg.scripts ?? {};
+  } catch {
+    return {};
+  }
+}
+
 function isReact(root: string): boolean {
   const pkgPath = join(root, 'package.json');
   if (!existsSync(pkgPath)) return false;
@@ -52,5 +63,6 @@ export function detectProject(rootPath: string): ProjectContext {
     rootPath,
     types,
     packageManager: detectPackageManager(rootPath),
+    scripts: readScripts(rootPath),
   };
 }

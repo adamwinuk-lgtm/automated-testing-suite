@@ -21,7 +21,7 @@ function makeTemp(): string {
 }
 
 function ctx(rootPath: string, pm: ProjectContext['packageManager'] = 'npm'): ProjectContext {
-  return { rootPath, types: ['nodejs'], packageManager: pm };
+  return { rootPath, types: ['nodejs'], packageManager: pm, scripts: {} };
 }
 
 afterEach(() => {
@@ -32,7 +32,7 @@ afterEach(() => {
 describe('runBuild — SKIP', () => {
   it('SKIPs for non-Node projects', async () => {
     const dir = makeTemp();
-    const result = await runBuild({ rootPath: dir, types: ['python'], packageManager: null });
+    const result = await runBuild({ rootPath: dir, types: ['python'], packageManager: null, scripts: {} });
     expect(result.status).toBe('SKIP');
     expect(mockExeca).not.toHaveBeenCalled();
   });

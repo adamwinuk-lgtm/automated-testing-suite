@@ -20,8 +20,12 @@ function makeTemp(): string {
   return tempDir;
 }
 
-function ctx(rootPath: string, pm: ProjectContext['packageManager'] = 'npm'): ProjectContext {
-  return { rootPath, types: ['nodejs'], packageManager: pm };
+function ctx(
+  rootPath: string,
+  pm: ProjectContext['packageManager'] = 'npm',
+  scripts: Record<string, string> = {},
+): ProjectContext {
+  return { rootPath, types: ['nodejs'], packageManager: pm, scripts };
 }
 
 afterEach(() => {
@@ -40,7 +44,7 @@ describe('runLint — SKIP', () => {
 
   it('SKIPs for non-Node projects', async () => {
     const dir = makeTemp();
-    const result = await runLint({ rootPath: dir, types: ['python'], packageManager: null });
+    const result = await runLint({ rootPath: dir, types: ['python'], packageManager: null, scripts: {} });
     expect(result.status).toBe('SKIP');
     expect(mockExeca).not.toHaveBeenCalled();
   });
@@ -94,5 +98,57 @@ describe('runLint — FAIL', () => {
 
     await runLint(ctx(dir, 'pnpm'));
     expect(mockExeca).toHaveBeenCalledWith('pnpm', expect.arrayContaining(['exec', 'eslint']), expect.any(Object));
+  });
+});
+
+describe('runLint — script-first (monorepo)', () => {
+  it('PASSes via npm run lint when scripts.lint present and exits 0', async () => {
+    const dir = makeTemp();
+    mockExeca.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' } as never);
+
+    const result = await runLint(ctx(dir, 'npm', { lint: 'eslint .' }));
+    expect(result.status).toBe('PASS');
+    expect(mockExeca).toHaveBeenCalledWith('npm', ['run', 'lint'], expect.any(Object));
+  });
+
+  it('FAILs via npm run lint when exits 1', async () => {
+    const dir = makeTemp();
+    mockExeca.mockResolvedValue({
+      exitCode: 1,
+      stdout: "1:1  error  'x' is defined but never used",
+      stderr: '',
+    } as never);
+
+    const result = await runLint(ctx(dir, 'npm', { lint: 'eslint .' }));
+    expect(result.status).toBe('FAIL');
+  });
+
+  it('WARNs via npm run lint when exits 0 with warnings', async () => {
+    const dir = makeTemp();
+    mockExeca.mockResolvedValue({
+      exitCode: 0,
+      stdout: '1 warning found',
+      stderr: '',
+    } as never);
+
+    const result = await runLint(ctx(dir, 'npm', { lint: 'eslint .' }));
+    expect(result.status).toBe('WARN');
+  });
+
+  it('uses pnpm run lint when packageManager is pnpm', async () => {
+    const dir = makeTemp();
+    mockExeca.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' } as never);
+
+    await runLint(ctx(dir, 'pnpm', { lint: 'eslint .' }));
+    expect(mockExeca).toHaveBeenCalledWith('pnpm', ['run', 'lint'], expect.any(Object));
+  });
+
+  it('script takes precedence over missing eslint config', async () => {
+    const dir = makeTemp();
+    mockExeca.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' } as never);
+
+    const result = await runLint(ctx(dir, 'npm', { lint: 'eslint .' }));
+    expect(result.status).toBe('PASS');
+    expect(mockExeca).toHaveBeenCalled();
   });
 });

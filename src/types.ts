@@ -26,6 +26,7 @@ export interface ProjectContext {
   rootPath: string;
   types: ProjectType[];
   packageManager: 'npm' | 'pnpm' | 'yarn' | null;
+  scripts: Record<string, string>;
 }
 
 export interface RunConfig {

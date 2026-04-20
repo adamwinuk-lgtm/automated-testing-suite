@@ -20,8 +20,8 @@ function makeTemp(): string {
   return tempDir;
 }
 
-function ctx(rootPath: string): ProjectContext {
-  return { rootPath, types: ['nodejs'], packageManager: 'pnpm' };
+function ctx(rootPath: string, scripts: Record<string, string> = {}): ProjectContext {
+  return { rootPath, types: ['nodejs'], packageManager: 'pnpm', scripts };
 }
 
 afterEach(() => {
@@ -32,7 +32,7 @@ afterEach(() => {
 describe('runTypecheck — SKIP', () => {
   it('SKIPs for non-Node projects', async () => {
     const dir = makeTemp();
-    const result = await runTypecheck({ rootPath: dir, types: ['python'], packageManager: null });
+    const result = await runTypecheck({ rootPath: dir, types: ['python'], packageManager: null, scripts: {} });
     expect(result.status).toBe('SKIP');
     expect(mockExeca).not.toHaveBeenCalled();
   });
@@ -55,6 +55,39 @@ describe('runTypecheck — PASS', () => {
     const result = await runTypecheck(ctx(dir));
     expect(result.status).toBe('PASS');
     expect(result.gate).toBe('typecheck');
+  });
+});
+
+describe('runTypecheck — script-first (monorepo)', () => {
+  it('PASSes via pnpm run typecheck when scripts.typecheck present and exits 0', async () => {
+    const dir = makeTemp();
+    mockExeca.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' } as never);
+
+    const result = await runTypecheck(ctx(dir, { typecheck: 'tsc --noEmit' }));
+    expect(result.status).toBe('PASS');
+    expect(mockExeca).toHaveBeenCalledWith('pnpm', ['run', 'typecheck'], expect.any(Object));
+  });
+
+  it('FAILs via script when exits 1', async () => {
+    const dir = makeTemp();
+    mockExeca.mockResolvedValue({
+      exitCode: 1,
+      stdout: "src/foo.ts(1,5): error TS2304: Cannot find name 'x'.",
+      stderr: '',
+    } as never);
+
+    const result = await runTypecheck(ctx(dir, { typecheck: 'tsc --noEmit' }));
+    expect(result.status).toBe('FAIL');
+    expect(result.errors).toHaveLength(1);
+  });
+
+  it('script takes precedence over missing tsconfig', async () => {
+    const dir = makeTemp();
+    mockExeca.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' } as never);
+
+    const result = await runTypecheck(ctx(dir, { typecheck: 'tsc --noEmit' }));
+    expect(result.status).toBe('PASS');
+    expect(mockExeca).toHaveBeenCalled();
   });
 });
 

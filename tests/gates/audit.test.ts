@@ -21,7 +21,7 @@ function makeTemp(): string {
 }
 
 function ctx(rootPath: string): ProjectContext {
-  return { rootPath, types: ['nodejs'], packageManager: 'npm' };
+  return { rootPath, types: ['nodejs'], packageManager: 'npm', scripts: {} };
 }
 
 function auditJson(high = 0, critical = 0, moderate = 0): string {
@@ -40,7 +40,7 @@ afterEach(() => {
 describe('runAudit — SKIP', () => {
   it('SKIPs for non-Node projects', async () => {
     const dir = makeTemp();
-    const result = await runAudit({ rootPath: dir, types: ['docker'], packageManager: null });
+    const result = await runAudit({ rootPath: dir, types: ['docker'], packageManager: null, scripts: {} });
     expect(result.status).toBe('SKIP');
     expect(mockExeca).not.toHaveBeenCalled();
   });

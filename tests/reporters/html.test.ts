@@ -25,7 +25,7 @@ function makeResult(overrides: Partial<RunResult> = {}): RunResult {
       reportDir: tempDir,
       includePerf: false,
     },
-    context: { rootPath: '/tmp/my-project', types: ['nodejs'], packageManager: 'npm' },
+    context: { rootPath: '/tmp/my-project', types: ['nodejs'], packageManager: 'npm', scripts: {} },
     gates: [
       { gate: 'lint', status: 'PASS', duration: 100 },
       { gate: 'typecheck', status: 'FAIL', duration: 200, errors: ['src/x.ts:1 error TS2345'], fix: 'Run: npx tsc --noEmit' },
